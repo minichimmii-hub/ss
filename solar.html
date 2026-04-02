@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Solar Palm Gesture</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+    }
+    canvas {
+      position: absolute;
+    }
+    video {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// INIT MEDIAPIPE
+const hands = new Hands({
+  locateFile: (file) => {
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+  }
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.7,
+  minTrackingConfidence: 0.7
+});
+
+// DRAW EFFECT
+function drawEnergyBall(x, y) {
+  let radius = 40 + Math.random() * 10;
+
+  // glow
+  const gradient = ctx.createRadialGradient(x, y, 10, x, y, radius);
+  gradient.addColorStop(0, "rgba(255, 200, 0, 1)");
+  gradient.addColorStop(0.5, "rgba(255, 100, 0, 0.7)");
+  gradient.addColorStop(1, "rgba(255, 0, 0, 0)");
+
+  ctx.beginPath();
+  ctx.fillStyle = gradient;
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // spark
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.strokeStyle = "yellow";
+    ctx.moveTo(x, y);
+    ctx.lineTo(
+      x + (Math.random() - 0.5) * 100,
+      y + (Math.random() - 0.5) * 100
+    );
+    ctx.stroke();
+  }
+}
+
+// DETECTION RESULT
+hands.onResults((results) => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (results.multiHandLandmarks.length > 0) {
+    const hand = results.multiHandLandmarks[0];
+
+    // titik telapak (approx middle)
+    const palm = hand[9];
+
+    const x = palm.x * canvas.width;
+    const y = palm.y * canvas.height;
+
+    drawEnergyBall(x, y);
+  }
+});
+
+// CAMERA
+const camera = new Camera(video, {
+  onFrame: async () => {
+    await hands.send({image: video});
+  },
+  width: 640,
+  height: 480
+});
+
+camera.start();
+</script>
+
+</body>
+</html>
